@@ -507,6 +507,11 @@ async fn run_websocket_server(
     };
 
     while let Ok((tcp_stream, sock_addr)) = server.accept().await {
+        // Each remote message is its own websocket frame. With Nagle's algorithm a small frame (a query end, a
+        // sample) waits for the ACK of the previous one, which a delayed ACK holds for up to 40 ms.
+        if let Err(err) = tcp_stream.set_nodelay(true) {
+            tracing::warn!("Unable to set TCP_NODELAY for {sock_addr:?}: {err}");
+        }
         let zenoh_runtime = zenoh_runtime.clone();
         let opt_tls_acceptor = opt_tls_acceptor.clone();
         let state_map2 = state_map.clone();
